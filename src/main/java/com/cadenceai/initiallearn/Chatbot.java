@@ -11,6 +11,7 @@ import java.util.Scanner;
 
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.cdimascio.dotenv.Dotenv;
@@ -22,7 +23,7 @@ public class Chatbot {
    List<Map<String, String>> history = new ArrayList<>();
     ObjectMapper mapper = new ObjectMapper();
 
-    Dotenv dotenv = Dotenv.load();
+    Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
 
    String API_KEY = dotenv.get("GEMINI_API_KEY");
 
@@ -30,9 +31,19 @@ public class Chatbot {
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent";
 
 public void initialize(){
+System.out.println("Chatbot started. Type 'exit' to stop.");
 while (true) {
 
     String input = scanner.nextLine();
+
+    if (input.equalsIgnoreCase("exit")) {
+        System.out.println("Goodbye!");
+        break;
+    }
+
+    if (input.isBlank()) {
+        continue;
+    }
 
    try{
     String historyJson = mapper.writeValueAsString(history);
@@ -57,6 +68,10 @@ while (true) {
 
 private String callGeminiApi(String prompt) throws Exception {
 
+        if (API_KEY == null || API_KEY.isBlank()) {
+            throw new IllegalStateException("Set GEMINI_API_KEY before starting the chatbot.");
+        }
+
         HttpClient client = HttpClient.newHttpClient();
 
         // CHANGED: create JSON using Jackson
@@ -80,10 +95,21 @@ private String callGeminiApi(String prompt) throws Exception {
 
         HttpResponse<String> response =
                 client.send(request, HttpResponse.BodyHandlers.ofString());
-        // JsonNode response = mapper.map(response, JsonNode)
-        return response.body();
+
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new IllegalStateException("Gemini returned " + response.statusCode()
+                    + ": " + response.body());
+        }
+
+        JsonNode json = mapper.readTree(response.body());
+        return json.path("candidates")
+                .path(0)
+                .path("content")
+                .path("parts")
+                .path(0)
+                .path("text")
+                .asText("Gemini did not return a text response.");
     }
 }
-
 
 
