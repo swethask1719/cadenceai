@@ -108,8 +108,52 @@ private String callGeminiApi(String prompt) throws Exception {
         );
 
         String jsonBody = mapper.writeValueAsString(body);
-        System.out.println(jsonBody);
 
+        JsonNode json = sendGeminiRequest(client, jsonBody);
+        JsonNode part = json
+                .path("candidates")
+                .path(0)
+                .path("content")
+                .path("parts")
+                .path(0);
+
+        if (part.has("functionCall")) {
+
+            JsonNode functionCall = part.path("functionCall");
+            String functionName = functionCall.path("name").asText();
+            String functionCallId = functionCall.path("id").asText();
+            JsonNode args = functionCall.path("args");
+
+            if (!functionName.equals("calculateSum")) {
+                return "Unknown tool: " + functionName;
+            }
+
+            int result = ToolCalling.calculateSum(args.path("a").asInt(), args.path("b").asInt());
+
+            // Step 1: Gemini asks to call a function. We run that Java method here.
+            // Step 2: Send both Gemini's request and the Java result back to Gemini.
+            // This lets Gemini produce the final, natural-language reply for the user.
+            // The id links this result to the exact function call Gemini made.
+            Map<String, Object> functionResponse = Map.of(
+                    "id", functionCallId,
+                    "name", functionName,
+                    "response", Map.of("result", result));
+            Map<String, Object> followUpBody = Map.of(
+                    "contents", List.of(
+                            Map.of("role", "user", "parts", List.of(Map.of("text", prompt))),
+                            mapper.convertValue(json.path("candidates").path(0).path("content"), Map.class),
+                            Map.of("role", "user", "parts", List.of(
+                                    Map.of("functionResponse", functionResponse)))),
+                    "tools", List.of(tool));
+
+            json = sendGeminiRequest(client, mapper.writeValueAsString(followUpBody));
+            part = json.path("candidates").path(0).path("content").path("parts").path(0);
+        }
+
+        return part.path("text").asText("Gemini did not return a text response.");
+    }
+
+    private JsonNode sendGeminiRequest(HttpClient client, String jsonBody) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(URL + "?key=" + API_KEY))
                 .header("Content-Type", "application/json")
@@ -123,45 +167,6 @@ private String callGeminiApi(String prompt) throws Exception {
             throw new IllegalStateException("Gemini returned " + response.statusCode()
                     + ": " + response.body());
         }
-        JsonNode json = mapper.readTree(response.body());
-        JsonNode part = json
-                .path("candidates")
-                .path(0)
-                .path("content")
-                .path("parts")
-                .path(0);
-
-        if (part.has("functionCall")) {
-
-            JsonNode functionCall =
-                    part.path("functionCall");
-
-            String functionName =
-                    functionCall.path("name").asText();
-
-            JsonNode args =
-                    functionCall.path("args");
-
-            int a = args.path("a").asInt();
-            int b = args.path("b").asInt();
-
-
-            if (functionName.equals("calculateSum")) {
-
-                int result = ToolCalling.calculateSum(a, b);
-
-                System.out.println("Result = " + result);
-
-                return "Tool result: " + result;
-            }
-
-            return "Unknown tool: " + functionName;
-        }
-
-        return part
-                .path("text")
-                .asText("Gemini did not return a text response.");
+        return mapper.readTree(response.body());
     }
 }
-
-
