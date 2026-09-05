@@ -49,7 +49,7 @@ flowchart LR
 
 **Flow:**
 1. Audio streams from the client over a WebSocket into the Spring Boot backend.
-2. The voice pipeline (STT → LLM → TTS) drives the conversation in real time; session context lives in Redis.
+2. The voice pipeline (STT → Gemini → TTS) drives the conversation in real time; session context lives in Redis.
 3. Every turn is published to Kafka as an event — decoupling the real-time loop from evaluation so scoring never adds latency to the conversation.
 4. An async consumer scores each session on objective transcript metrics (words per minute, filler word rate, pause patterns) and an LLM-as-judge pass on structure/clarity.
 5. Scores persist to Postgres and surface in a React dashboard, with trends tracked across sessions.
@@ -59,7 +59,7 @@ flowchart LR
 | Layer | Choice |
 |---|---|
 | Backend | Spring Boot (WebSocket) |
-| Voice pipeline | Streaming STT + Claude API + streaming TTS |
+| Voice pipeline | Streaming STT + Gemini API + streaming TTS |
 | Event backbone | Kafka |
 | Session state | Redis |
 | Eval storage | Postgres |
@@ -81,5 +81,3 @@ flowchart LR
 Requires API keys for your chosen STT/LLM/TTS providers — see `application.yml.example`.
 
 ## License
-
-MIT
