@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.github.cdimascio.dotenv.Dotenv;
+
 @Service 
 public class Chatbot {
     Scanner scanner = new Scanner(System.in);
@@ -20,7 +22,9 @@ public class Chatbot {
    List<Map<String, String>> history = new ArrayList<>();
     ObjectMapper mapper = new ObjectMapper();
 
-   static final String API_KEY = "API_KEY";
+    Dotenv dotenv = Dotenv.load();
+
+   String API_KEY = dotenv.get("GEMINI_API_KEY");
 
     static final String URL =
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent";
