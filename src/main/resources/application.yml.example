@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: cadenceai
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/cadenceai
+    username: cadenceai
+    password: change-me
+
+server:
+  port: 8080
+
+cadenceai:
+  providers:
+    stt:
+      api-key: ${STT_API_KEY}
+    llm:
+      api-key: ${ANTHROPIC_API_KEY}
+    tts:
+      api-key: ${TTS_API_KEY}
