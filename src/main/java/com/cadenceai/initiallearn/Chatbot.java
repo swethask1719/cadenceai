@@ -5,6 +5,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -67,6 +68,26 @@ while (true) {
 }
 
 private String callGeminiApi(String prompt) throws Exception {
+    Map<String, Object> functionDeclaration = new HashMap<>();
+
+        functionDeclaration.put("name", "calculateSum");
+        functionDeclaration.put("description", "Adds two numbers");
+    Map<String, Object> properties = new HashMap<>();
+
+        properties.put("a", Map.of("type", "NUMBER"));
+        properties.put("b", Map.of("type", "NUMBER"));
+    
+    Map<String, Object> parameters = new HashMap<>();
+
+        parameters.put("type", "OBJECT");
+        parameters.put("properties", properties);
+        parameters.put("required", List.of("a", "b"));
+    
+        functionDeclaration.put("parameters", parameters);
+
+    Map<String, Object> tool = new HashMap<>();
+
+        tool.put("functionDeclarations",List.of(functionDeclaration));
 
         if (API_KEY == null || API_KEY.isBlank()) {
             throw new IllegalStateException("Set GEMINI_API_KEY before starting the chatbot.");
@@ -82,10 +103,12 @@ private String callGeminiApi(String prompt) throws Exception {
                         Map.of("text", prompt)
                     )
                 )
-            )
+            ),
+            "tools", List.of(tool)
         );
 
         String jsonBody = mapper.writeValueAsString(body);
+        System.out.println(jsonBody);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(URL + "?key=" + API_KEY))
@@ -100,13 +123,42 @@ private String callGeminiApi(String prompt) throws Exception {
             throw new IllegalStateException("Gemini returned " + response.statusCode()
                     + ": " + response.body());
         }
-
         JsonNode json = mapper.readTree(response.body());
-        return json.path("candidates")
+        JsonNode part = json
+                .path("candidates")
                 .path(0)
                 .path("content")
                 .path("parts")
-                .path(0)
+                .path(0);
+
+        if (part.has("functionCall")) {
+
+            JsonNode functionCall =
+                    part.path("functionCall");
+
+            String functionName =
+                    functionCall.path("name").asText();
+
+            JsonNode args =
+                    functionCall.path("args");
+
+            int a = args.path("a").asInt();
+            int b = args.path("b").asInt();
+
+
+            if (functionName.equals("calculateSum")) {
+
+                int result = ToolCalling.calculateSum(a, b);
+
+                System.out.println("Result = " + result);
+
+                return "Tool result: " + result;
+            }
+
+            return "Unknown tool: " + functionName;
+        }
+
+        return part
                 .path("text")
                 .asText("Gemini did not return a text response.");
     }
