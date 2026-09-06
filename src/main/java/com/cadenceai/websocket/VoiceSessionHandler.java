@@ -5,12 +5,15 @@ import java.nio.ByteBuffer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.AbstractWebSocketHandler;
+
+import com.cadenceai.service.GeminiService;
 
 /**
  * Handles a single voice practice session over WebSocket.
@@ -25,6 +28,9 @@ import org.springframework.web.socket.handler.AbstractWebSocketHandler;
  */
 @Component
 public class VoiceSessionHandler extends AbstractWebSocketHandler {
+
+    @Autowired 
+    GeminiService geminiService;
 
     private static final Logger log = LoggerFactory.getLogger(VoiceSessionHandler.class);
 
@@ -57,18 +63,21 @@ public class VoiceSessionHandler extends AbstractWebSocketHandler {
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         // TODO: handle control messages (e.g. start/stop practice session, mode selection)
         String text = message.getPayload();
+        session.sendMessage(new TextMessage("Practice started"));
+        String geminiResponse = geminiService.callGeminiApi(text);
+        session.sendMessage(new TextMessage(geminiResponse));
 
-        switch (text) {
-            case "start":
-                session.sendMessage(new TextMessage("Practice started"));
-                break;
-            case "stop":
-                session.sendMessage(new TextMessage("Practice stopped"));
-                break;
-            default:
-                session.sendMessage(new TextMessage("Unknown command"));
-                break;
-        }
+        // switch (text) {
+        //     case "start":
+        //         session.sendMessage(new TextMessage("Practice started"));
+        //         break;
+        //     case "stop":
+        //         session.sendMessage(new TextMessage("Practice stopped"));
+        //         break;
+        //     default:
+        //         session.sendMessage(new TextMessage("Unknown command"));
+        //         break;
+        // }
         
     }
 
