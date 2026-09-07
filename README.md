@@ -87,8 +87,6 @@ These aren't wired into the app and will likely be removed once the core voice l
 ./mvnw spring-boot:run
 ```
 
-Requires a Gemini API key with Live API access — see `application.yml.example`.
+Requires a Gemini API key with Live API access — see `application.yml`.
 
 ## License
-
-MIT
