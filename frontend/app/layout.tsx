@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Cadence AI",
-  description: "Sign up or log in to Cadence AI",
+  title: "Cadence — Adaptive learning",
+  description: "Create, learn, and share adaptive courses with a real-time AI tutor.",
 };
 
 export default function RootLayout({
